@@ -8,11 +8,7 @@ from fsm import TocMachine
 import google_news as news
 
 import boto3
-client = boto3.client(
-    'rekognition',
-    aws_access_key_id='AKIAJEILWO4YUSUCZ3BQ',
-    aws_secret_access_key='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'
-    )
+client = boto3.client('rekognition')
 from gtts import gTTS
 
 import sqlite3
@@ -20,7 +16,7 @@ import random
 
 #cursor = conn.execute("SELECT * from fortunes")
 API_TOKEN = '349456127:AAHUnR5v_aVeOBBWARNRK_xMGoss-zWWkZw'
-WEBHOOK_URL = 'https://7258abe3.ngrok.io/hook'
+WEBHOOK_URL = 'https://b41041f9.ngrok.io/hook'
 
 app = Flask(__name__)
 bot = telegram.Bot(token=API_TOKEN)

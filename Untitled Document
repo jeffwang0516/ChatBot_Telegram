@@ -1,0 +1,21 @@
+'''
+    conn = sqlite3.connect('bot_db.db')
+    cursor = conn.execute("SELECT STATE from STATEREC WHERE ID=(?)", (str(update.message.chat.id),))
+    ori_state=''
+    for row in cursor:
+        ori_state = row[0]
+    print("ori:"+ori_state)
+    if not ori_state:
+        conn.execute("INSERT INTO STATEREC (ID, STATE) VALUES(?,?)", (str(update.message.chat.id),"user"))
+        machine.set_state("user")
+    else:
+        if ori_state != machine.state:
+            machine.set_state(ori_state)
+            print(machine.state)
+'''
+
+'''
+    conn.execute("UPDATE STATEREC SET STATE = ? WHERE ID=?", (machine.state, str(update.message.chat.id)))
+    conn.commit()
+    conn.close()
+'''

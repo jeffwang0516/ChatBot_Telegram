@@ -7,10 +7,19 @@ class TocMachine(GraphMachine):
             model = self,
             **machine_configs
         )
+        #print(self.machine.states)
+        self.states = self.machine.states
+        self.models = self.machine.models
         self.topic = 'null'
         self.num = 0
         self.imgid=''
-    
+    def going_to_test(self,update):
+        text = update.message.text
+        return text.lower() == 'test'
+
+    def on_enter_test(self,update):
+        update.message.reply_text('Okay, thanks')
+        self.go_back(update)
     def is_going_to_getimage(self, update):
         text = update.message.text
         return text.lower() == 'guide dog'
@@ -49,6 +58,7 @@ class TocMachine(GraphMachine):
         return text.lower() == 'entertainment'
     def is_going_to_search(self, update):
         text = update.message.text
+        self.topic = 'q'
         return text.lower() == 'search'
 
     def is_going_to_lang_sel_EN(self, update):

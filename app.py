@@ -3,7 +3,7 @@ from io import BytesIO
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove)
 import telegram
 from flask import Flask, request, send_file
-
+from flask.ext.cache import Cache
 from fsm import TocMachine
 import google_news as news
 
@@ -16,9 +16,10 @@ import random
 
 #cursor = conn.execute("SELECT * from fortunes")
 API_TOKEN = '349456127:AAHUnR5v_aVeOBBWARNRK_xMGoss-zWWkZw'
-WEBHOOK_URL = 'https://b41041f9.ngrok.io/hook'
+WEBHOOK_URL = 'https://9c872284.ngrok.io/hook'
 
 app = Flask(__name__)
+cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 bot = telegram.Bot(token=API_TOKEN)
 machine = TocMachine(
     states=[
@@ -39,10 +40,17 @@ machine = TocMachine(
         'image_reply',
         'fortune',
         'fortune_lang',
-        'fortune_ACC'
+        'fortune_ACC',
+        'test'
 
     ],
     transitions=[
+        {
+            'trigger':'advance',
+            'source':'user',
+            'dest':'test',
+            'conditions':'going_to_test'
+        },
         {
             'trigger': 'advance',
             'source': 'user',
@@ -171,7 +179,7 @@ machine = TocMachine(
 
         {
             'trigger': 'go_back',
-            'source': ['news_end', 'fortune_ACC', 'image_verify', 'image_reply'] ,
+            'source': ['news_end', 'fortune_ACC', 'image_verify', 'image_reply','test'] ,
             'dest': 'user'
         }
     ],
@@ -197,29 +205,17 @@ conn.close()
 @app.route('/hook', methods=['POST'])
 def webhook_handler():
     update = telegram.Update.de_json(request.get_json(force=True), bot)
-    '''conn = sqlite3.connect('bot_db.db')
-    cursor = conn.execute("SELECT STATE from STATEREC WHERE ID=(?)", (str(update.message.chat.id),))
-    ori_state=''
-    for row in cursor:
-        ori_state = row[0]
-    #print(ori_state)
-    if not ori_state:
-        conn.execute("INSERT INTO STATEREC (ID, STATE) VALUES(?,?)", (str(update.message.chat.id),machine.state))
-    else:
-        if ori_state!=machine.state:
-            
-            switch_to_state = getattr(machine, 'to_'+str(ori_state))
-            switch_to_state()
-    '''
+    state = cache.get(update.message.chat.id) or 'user'
+    if(machine.state!=state):
+        machine.set_state(state)
+    print(state)
     machine.advance(update)
     #print(update.message.chat.id)
 
     #HANDLE for each state
     handle_reply(update, machine.state)
-
-    '''conn.execute("UPDATE STATEREC SET STATE = ? WHERE ID=?", (machine.state, str(update.message.chat.id)))
-    conn.commit()
-    conn.close()'''
+    
+    cache.set(update.message.chat.id, machine.state)
     return 'ok'
 def handle_reply(update, state):
     if state == 'user':
@@ -233,16 +229,20 @@ def handle_reply(update, state):
         reply_keyboard = [['World', 'Sports'],[ 'Entertainment','Search']]
         update.message.reply_text(text, reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     elif state == 'state1' or state == 'state2'or state == 'state3':
+        cache.set(str(update.message.chat.id)+'newstype',machine.topic)
         handle_language(update)
     elif state == 'sel_TW' or state == 'sel_EN':
         update.message.reply_text('How many stories do you want?(numbers)')
+        cache.set(str(update.message.chat.id)+'newslang',machine.lang)
 
     elif state == 'numOfPosts':
         #print(machine.topic+machine.lang+str(machine.num))
         #machine.go_back(update)
+        topic = cache.get(str(update.message.chat.id)+'newstype')
+        lang = cache.get(str(update.message.chat.id)+'newslang')
         content=[]
-        if  not machine.query:
-            content = news.get_news(machine.topic, machine.lang, machine.num)
+        if  machine.topic != 'q':
+            content = news.get_news(topic, lang, machine.num)
         else:
             content = news.query_news( machine.topic ,machine.num )
         for post in content:
@@ -323,7 +323,11 @@ def handle_reply(update, state):
     elif state == 'fortune_lang':
         conn = sqlite3.connect('bot_db.db')
         fortune_str=''
-        if machine.lang == 'en':
+        if update.message.text.lower() == 'english' or update.message.text.lower() == 'chinese':
+            cache.set(str(update.message.chat.id)+'LAN', update.message.text)
+        lan=cache.get(str(update.message.chat.id)+'LAN')
+
+        if lan.lower() == 'english':
             cursor = conn.execute("SELECT count(*) from fortunes")
             cnt=0
             for r in cursor:
@@ -370,4 +374,4 @@ def show_fsm():
 
 if __name__ == "__main__":
     _set_webhook()
-    app.run(threaded=True)
+    app.run()
